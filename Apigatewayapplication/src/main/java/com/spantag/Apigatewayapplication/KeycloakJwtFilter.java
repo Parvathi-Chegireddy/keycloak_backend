@@ -16,22 +16,7 @@ import reactor.core.publisher.Mono;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
-/**
- * Keycloak JWT Gateway Filter
- *
- * Spring Security OAuth2 Resource Server already validated the Keycloak JWT
- * (via JWKS URI) before this filter runs.
- *
- * This filter:
- *   1. Strips any spoofed X-Auth-* headers from the client request
- *   2. Reads the validated JWT claims from the ReactiveSecurityContext
- *   3. Injects trusted X-Auth-Username, X-Auth-Role, X-Auth-Email headers
- *      so downstream services can trust them without re-validating the JWT
- *
- * FIX: Added detailed logging so you can see in the Gateway console exactly
- * what claims are being extracted and passed downstream. This makes it easy
- * to spot mismatches (e.g. wrong realm, missing roles claim).
- */
+
 @Component
 public class KeycloakJwtFilter extends AbstractGatewayFilterFactory<KeycloakJwtFilter.Config> {
 
