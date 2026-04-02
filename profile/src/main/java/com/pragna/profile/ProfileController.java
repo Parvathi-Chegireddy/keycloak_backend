@@ -10,15 +10,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Profile Controller — Keycloak integrated
- *
- * POST /api/profile/token    → still called by auth/oauth2 services;
- *                               now proxies to Keycloak token endpoint
- * POST /api/profile/refresh  → proxies refresh to Keycloak
- * POST /api/profile/logout   → clears cookies
- * GET  /api/profile/validate → introspects token with Keycloak
- */
+
 @RestController
 @RequestMapping("/api/profile")
 public class ProfileController {
@@ -36,9 +28,6 @@ public class ProfileController {
         this.clientId = clientId;
     }
 
-    // ── POST /api/profile/token ───────────────────────────────────────────
-    // Called by auth-service and oauth2-service after login
-    // Proxies direct grant to Keycloak
     @PostMapping("/token")
     public ResponseEntity<Map<String, Object>> issueToken(
             @RequestBody ProfileRequest req,
@@ -146,7 +135,6 @@ public class ProfileController {
         }
     }
 
-    // ── Cookie helpers ────────────────────────────────────────────────────
     private void setRefreshTokenCookie(HttpServletResponse response, String token) {
         if (token == null) return;
         response.addHeader("Set-Cookie",
