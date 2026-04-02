@@ -47,12 +47,9 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .sessionManagement(s -> s
                     .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            // Add gateway auth filter BEFORE Spring's default auth filter
             .addFilterBefore(gatewayAuthFilter,
                     UsernamePasswordAuthenticationFilter.class)
             .authorizeHttpRequests(auth -> auth
-                    // All access control enforced by @PreAuthorize on methods
-                    // Gateway already blocked unauthenticated requests
                     .anyRequest().authenticated()
             )
             .exceptionHandling(ex -> ex
