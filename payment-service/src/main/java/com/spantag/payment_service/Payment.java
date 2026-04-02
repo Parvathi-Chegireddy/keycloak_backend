@@ -13,11 +13,9 @@ public class Payment {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Unique payment reference — sent back to order service
     @Column(unique = true, nullable = false)
     private String paymentId;
 
-    // The order this payment belongs to — from saga orchestrator
     @Column(nullable = false)
     private Long orderId;
 
@@ -40,7 +38,6 @@ public class Payment {
 
     @PrePersist
     protected void onCreate() {
-        // Generate a unique payment reference on first save
         if (paymentId == null) paymentId = "PAY-" + UUID.randomUUID().toString().toUpperCase();
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
