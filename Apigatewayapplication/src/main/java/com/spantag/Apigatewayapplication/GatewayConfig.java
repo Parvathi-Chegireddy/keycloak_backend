@@ -8,14 +8,6 @@ import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import reactor.core.publisher.Mono;
 
-/**
- * Gateway Config — logging filter only.
- *
- * JWT validation and X-Auth-* header injection is handled by
- * KeycloakJwtFilter (route-level filter referenced in application.yml).
- *
- * Security (Keycloak JWT validation via JWKS) is configured in SecurityConfig.
- */
 @Configuration
 public class GatewayConfig {
 
