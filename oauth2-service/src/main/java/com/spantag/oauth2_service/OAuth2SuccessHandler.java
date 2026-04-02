@@ -19,12 +19,9 @@ import java.util.Map;
 @Component
 public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
-    // Auth service — saves OAuth2 user to the shared DB
     private final WebClient authClient = WebClient.builder()
             .baseUrl("http://localhost:9090")
             .build();
-
-    // Profile service — issues JWT tokens
     private final WebClient profileClient = WebClient.builder()
             .baseUrl("http://localhost:9093")
             .build();
@@ -41,30 +38,23 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         OAuth2User oauthUser = oauthToken.getPrincipal();
         String provider      = oauthToken.getAuthorizedClientRegistrationId();
 
-        // Extract user info from OAuth2 provider
         String name       = extractName(oauthUser, provider);
         String email      = extractEmail(oauthUser, provider);
         String avatarUrl  = extractAvatar(oauthUser, provider);
         String providerId = extractProviderId(oauthUser, provider);
 
-        // ── Step 1: Save/update user in auth-service DB ──────────────
         Map<String, Object> savedUser = saveUserToDb(
                 provider, providerId, name, email, avatarUrl);
         String resolvedUsername = savedUser != null ? str(savedUser.get("username")) : name;
 
-        // ── Step 2: Issue JWT tokens via profile-service ──────────────
         Map<String, Object> profile = callProfileService(
                 resolvedUsername, name, email, avatarUrl,
                 "ROLE_USER", provider, "oauth2", response);
 
-        // ── Step 3: Invalidate OAuth2 session ────────────────────────
-        // The JWT is already in a HttpOnly cookie — no need to keep the session
         HttpSession session = request.getSession(false);
         if (session != null) session.invalidate();
 
-        // ── Step 4: Redirect React with non-sensitive display data ────
-        // The actual accessToken is NOT in the URL — it's in-memory on the frontend
-        // The refreshToken is in the HttpOnly cookie forwarded by callProfileService
+        
         String redirectUrl = FRONTEND_REDIRECT
                 + "?username="    + encode(resolvedUsername)
                 + "&displayName=" + encode(name)
@@ -82,7 +72,6 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         response.sendRedirect(redirectUrl);
     }
 
-    /* ── Step 1: persist OAuth2 user via auth-service ─────────────── */
 
     @SuppressWarnings("unchecked")
     private Map<String, Object> saveUserToDb(String provider, String providerId,
@@ -110,7 +99,6 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         }
     }
 
-    /* ── Step 2: call profile service and forward Set-Cookie ─────── */
 
     @SuppressWarnings("unchecked")
     private Map<String, Object> callProfileService(
@@ -155,8 +143,6 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         return fb;
     }
 
-    /* ── OAuth2 attribute extractors ────────────────────────────────── */
-
     private String extractName(OAuth2User user, String provider) {
         String name = user.getAttribute("name");
         if (name == null || name.isBlank()) name = user.getAttribute("login"); // GitHub
@@ -182,7 +168,6 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         return id != null ? id.toString() : user.getName();
     }
 
-    /* ── Utilities ──────────────────────────────────────────────────── */
 
     private String sanitize(String name) {
         if (name == null) return "user";
