@@ -18,14 +18,6 @@ public class OrderController {
     public OrderController(OrderService orderService) {
         this.orderService = orderService;
     }
-
-    /**
-     * POST /api/orders
-     * Creates an order and runs the saga.
-     * Returns 201 CREATED for CONFIRMED orders.
-     * Returns 200 OK with status=CANCELLED for saga-compensated orders
-     * (so the frontend can display the cancellation reason).
-     */
     @PostMapping
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<OrderResponse> createOrder(
@@ -51,10 +43,6 @@ public class OrderController {
         }
     }
 
-    /**
-     * GET /api/orders
-     * Returns all orders belonging to the authenticated user.
-     */
     @GetMapping
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<List<OrderResponse>> getMyOrders(Principal principal) {
@@ -63,10 +51,7 @@ public class OrderController {
         return ResponseEntity.ok(orders);
     }
 
-    /**
-     * GET /api/orders/{id}
-     * Returns a specific order — only if it belongs to the caller.
-     */
+    
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<OrderResponse> getOrder(
@@ -77,10 +62,7 @@ public class OrderController {
                 .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).<OrderResponse>build());
     }
 
-    /**
-     * GET /api/orders/admin/all
-     * Admin only — returns all orders across all users.
-     */
+    
     @GetMapping("/admin/all")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<OrderResponse>> getAllOrders() {
