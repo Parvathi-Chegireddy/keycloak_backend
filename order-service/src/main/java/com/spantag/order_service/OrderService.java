@@ -17,14 +17,6 @@ public class OrderService {
         this.sagaOrchestrator = sagaOrchestrator;
     }
 
-    /**
-     * Creates an order and immediately starts the saga.
-     *
-     * Note: @Transactional intentionally NOT used here.
-     * The saga makes external HTTP calls (payment service) inside it.
-     * Holding a DB transaction open across network calls causes
-     * connection pool exhaustion under load.
-     */
     public Order createOrder(String username, CreateOrderRequest req) {
         // Validate input
         if (req.getProductName() == null || req.getProductName().isBlank())
@@ -34,7 +26,6 @@ public class OrderService {
         if (req.getAmount() == null || req.getAmount().signum() <= 0)
             throw new IllegalArgumentException("Amount must be greater than 0");
 
-        // Step 1: persist order as PENDING
         Order order = new Order();
         order.setUsername(username);
         order.setProductName(req.getProductName().trim());
@@ -43,7 +34,6 @@ public class OrderService {
         order.setStatus(OrderStatus.PENDING);
         orderRepository.save(order);
 
-        // Hand off to saga orchestrator — drives steps 2 and 3
         return sagaOrchestrator.executeSaga(order);
     }
 
