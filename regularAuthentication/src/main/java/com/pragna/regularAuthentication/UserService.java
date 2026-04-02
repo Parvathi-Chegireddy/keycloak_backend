@@ -22,10 +22,6 @@ public class UserService {
         this.passwordEncoder = passwordEncoder;
     }
 
-    /**
-     * Register a new user.
-     * Throws RuntimeException if username or email is already taken.
-     */
     public User registerUser(User user, String roleName) {
         // Guard against duplicate username
         if (userRepository.existsByUsername(user.getUsername())) {
@@ -54,11 +50,7 @@ public class UserService {
         return userRepository.save(user);
     }
 
-    /**
-     * Save or update an OAuth2 user.
-     * If user with same provider+providerId exists, updates their info.
-     * Otherwise creates a new account.
-     */
+    
     public User saveOAuthUser(String provider, String providerId,
                               String name, String email, String avatarUrl) {
 
@@ -74,11 +66,9 @@ public class UserService {
 
         User user = new User();
 
-        // Generate unique username: "google_raju", "github_user_2", etc.
         String baseUsername = provider + "_" + sanitize(name);
         user.setUsername(uniqueUsername(baseUsername));
 
-        // Random unusable password — OAuth2 users never use password login
         user.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
 
         user.setEmail(email);
@@ -100,8 +90,6 @@ public class UserService {
     public User findByUsername(String username) {
         return userRepository.findByUsername(username).orElse(null);
     }
-
-    /* ── helpers ─────────────────────────────────────────── */
 
     private String sanitize(String name) {
         if (name == null) return "user";
