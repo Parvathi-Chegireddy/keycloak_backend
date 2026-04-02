@@ -25,8 +25,6 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        // 5173 = React (Vite)
-        // 1013 = Gateway (forwards OAuth2 initiation requests here)
         config.setAllowedOrigins(List.of(
                 "http://localhost:5173",
                 "http://localhost:1013"
@@ -44,7 +42,6 @@ public class SecurityConfig {
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
-            // Session needed only during OAuth2 handshake — destroyed in success handler
             .sessionManagement(s -> s
                 .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
             .authorizeHttpRequests(auth -> auth
