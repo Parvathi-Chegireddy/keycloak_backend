@@ -1,0 +1,16 @@
+spring:
+  application:
+    name: profile
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+
+server:
+  port: 9093
+
+# Keycloak Configuration
+keycloak:
+  auth-server-url: http://localhost:8180
+  realm: spantag
+  client-id: spantag-app

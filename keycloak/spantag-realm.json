@@ -1,0 +1,44 @@
+{
+  "realm": "spantag",
+  "enabled": true,
+  "displayName": "SpanTag",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "accessTokenLifespan": 900,
+  "ssoSessionMaxLifespan": 604800,
+  "roles": {
+    "realm": [
+      { "name": "user",  "description": "Regular user role" },
+      { "name": "admin", "description": "Administrator role" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "spantag-app",
+      "name": "SpanTag Application",
+      "enabled": true,
+      "publicClient": true,
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": true,
+      "redirectUris": ["http://localhost:5173/*", "http://localhost:1013/*"],
+      "webOrigins": ["http://localhost:5173", "http://localhost:1013"],
+      "protocol": "openid-connect"
+    },
+    {
+      "clientId": "spantag-admin",
+      "name": "SpanTag Admin Client",
+      "enabled": true,
+      "publicClient": false,
+      "directAccessGrantsEnabled": false,
+      "standardFlowEnabled": false,
+      "serviceAccountsEnabled": true,
+      "secret": "change-this-secret",
+      "protocol": "openid-connect"
+    }
+  ],
+  "defaultRoles": ["user"]
+}

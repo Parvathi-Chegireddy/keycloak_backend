@@ -1,0 +1,29 @@
+spring:
+  application:
+    name: order-service
+  datasource:
+    url: jdbc:mysql://localhost:3306/order_db?createDatabaseIfNotExist=true
+    username: root
+    password: 12345
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+server:
+  port: 9095
+    # Remove the 127.0.0.1 binding — it prevents the gateway from reaching this service.
+    # Payment service keeps 127.0.0.1 (direct saga calls only), but order-service
+    # is reached via gateway so it must listen on all interfaces.
+
+  # Payment service URL — called directly by SagaOrchestrator (not via gateway)  
+payment:
+  service:
+    url: http://localhost:9096
+
+logging:
+  level:
+    com.spantag.order: DEBUG

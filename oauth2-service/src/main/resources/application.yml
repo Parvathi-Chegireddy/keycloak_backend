@@ -1,0 +1,41 @@
+spring:
+  application:
+    name: oauth2-service
+
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id:  afdfddfd
+            client-secret: dfdasfdfda
+            scope:
+              - email
+              - profile
+            
+            redirect-uri: "http://localhost:9092/login/oauth2/code/google"
+
+          github:
+            client-id: afdfdfd
+            client-secret: adfdfafd
+            scope:
+              - user:email
+              - read:user
+            
+            redirect-uri: "http://localhost:9092/login/oauth2/code/github"
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/oauth2_service?createDatabaseIfNotExist=true
+    username: root
+    password: 12345
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+
+server:
+  port: 9092

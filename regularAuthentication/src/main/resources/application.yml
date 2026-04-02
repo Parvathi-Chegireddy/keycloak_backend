@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: regularAuthentication
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/regular_authentication?createDatabaseIfNotExist=true
+    username: root
+    password: 12345
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+
+server:
+  port: 9090
+
+# ── Keycloak Configuration ────────────────────────────────────────────────
+keycloak:
+  # Keycloak server URL (default port 8180 to avoid conflict with Spring Boot apps on 8080)
+  auth-server-url: http://localhost:8180
+  # Your Keycloak realm name — create a realm called 'spantag' in Keycloak Admin UI
+  realm: spantag
+  # Public client ID — the one configured in your Keycloak realm (Direct Grant enabled)
+  client-id: spantag-app
+  # Admin client credentials — create a dedicated admin service account in Keycloak
+  # Go to: Realm → Clients → Create client 'spantag-admin' → Service Account Roles
+  # Assign 'realm-management' → 'manage-users' role to the service account
+  admin:
+    client-id: spantag-admin
+    client-secret: ${KEYCLOAK_ADMIN_SECRET:lqCbO7WqlYWtA2ZeruxpwTiYsrUnBhPm}
+
+logging:
+  level:
+    org.springframework.security: WARN

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<section name="Workbench">
+	<section name="MavenProjectImportWizardPage">
+		<list key="rootDirectory">
+			<item value="D:\task\keycloak\keyclockbackend\userservice"/>
+			<item value="D:\task\keycloak\keyclockbackend\regularAuthentication"/>
+			<item value="D:\task\keycloak\keyclockbackend\profile"/>
+			<item value="D:\task\keycloak\keyclockbackend\payment-service"/>
+			<item value="D:\task\keycloak\keyclockbackend\order-service"/>
+			<item value="D:\task\keycloak\keyclockbackend\oauth2-service"/>
+			<item value="D:\task\keycloak\keyclockbackend\dashboard"/>
+			<item value="D:\task\keycloak\keyclockbackend\Apigatewayapplication"/>
+		</list>
+		<list key="projectNameTemplate">
+			<item value="[artifactId]"/>
+			<item value="[artifactId]-TRUNK"/>
+			<item value="[artifactId]-[version]"/>
+			<item value="[groupId].[artifactId]"/>
+			<item value="[groupId].[artifactId]-[version]"/>
+			<item value="[name]"/>
+		</list>
+	</section>
+</section>

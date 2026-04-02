@@ -1,0 +1,192 @@
+package com.spantag.Apigatewayapplication;
+
+import org.springframework.cloud.gateway.filter.GatewayFilter;
+import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
+import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.http.server.reactive.ServerHttpResponse;
+import org.springframework.security.core.context.ReactiveSecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.stereotype.Component;
+import reactor.core.publisher.Mono;
+
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+
+/**
+ * Keycloak JWT Gateway Filter
+ *
+ * Spring Security OAuth2 Resource Server already validated the Keycloak JWT
+ * (via JWKS URI) before this filter runs.
+ *
+ * This filter:
+ *   1. Strips any spoofed X-Auth-* headers from the client request
+ *   2. Reads the validated JWT claims from the ReactiveSecurityContext
+ *   3. Injects trusted X-Auth-Username, X-Auth-Role, X-Auth-Email headers
+ *      so downstream services can trust them without re-validating the JWT
+ *
+ * FIX: Added detailed logging so you can see in the Gateway console exactly
+ * what claims are being extracted and passed downstream. This makes it easy
+ * to spot mismatches (e.g. wrong realm, missing roles claim).
+ */
+@Component
+public class KeycloakJwtFilter extends AbstractGatewayFilterFactory<KeycloakJwtFilter.Config> {
+
+    public KeycloakJwtFilter() {
+        super(Config.class);
+    }
+
+    @Override
+    public GatewayFilter apply(Config config) {
+        return (exchange, chain) -> {
+            String path = exchange.getRequest().getPath().toString();
+
+            // ── STEP 1: Strip spoofed headers from client ─────────────
+            ServerHttpRequest stripped = exchange.getRequest().mutate()
+                    .headers(h -> {
+                        h.remove("X-Auth-Username");
+                        h.remove("X-Auth-Role");
+                        h.remove("X-Auth-Email");
+                        h.remove("X-Auth-Provider");
+                    })
+                    .build();
+
+            var strippedExchange = exchange.mutate().request(stripped).build();
+
+            // ── STEP 2: Read validated JWT from SecurityContext ───────
+            return ReactiveSecurityContextHolder.getContext()
+                    .flatMap(ctx -> {
+                        // FIX: More informative null-check error message
+                        if (ctx.getAuthentication() == null) {
+                            System.err.printf("[KeycloakJwtFilter] %s → REJECT: no authentication in SecurityContext%n", path);
+                            return reject(strippedExchange.getResponse(),
+                                    HttpStatus.UNAUTHORIZED,
+                                    "No authentication found — Bearer token missing or invalid");
+                        }
+
+                        if (!(ctx.getAuthentication() instanceof JwtAuthenticationToken jwtAuth)) {
+                            System.err.printf("[KeycloakJwtFilter] %s → REJECT: authentication is not JwtAuthenticationToken (got: %s)%n",
+                                    path, ctx.getAuthentication().getClass().getSimpleName());
+                            return reject(strippedExchange.getResponse(),
+                                    HttpStatus.UNAUTHORIZED,
+                                    "Invalid authentication type — expected Keycloak JWT");
+                        }
+
+                        Jwt jwt = jwtAuth.getToken();
+
+                        // ── STEP 3: Extract claims ─────────────────────
+                        String username = extractUsername(jwt);
+                        String role     = extractRole(jwt);
+                        String email    = jwt.getClaimAsString("email");
+                        String provider = "keycloak";
+
+                        // FIX: Log what we're injecting downstream so you can
+                        // verify the right claims are flowing through
+                        System.out.printf(
+                            "[KeycloakJwtFilter] %s → user=%s role=%s email=%s issuer=%s%n",
+                            path, username, role, email, jwt.getIssuer()
+                        );
+
+                        // ── STEP 4: Inject trusted headers ────────────
+                        ServerHttpRequest mutated = strippedExchange.getRequest().mutate()
+                                .header("X-Auth-Username", nvl(username))
+                                .header("X-Auth-Role",     nvl(role))
+                                .header("X-Auth-Email",    nvl(email))
+                                .header("X-Auth-Provider", provider)
+                                .build();
+
+                        return chain.filter(strippedExchange.mutate().request(mutated).build());
+                    })
+                    // FIX: switchIfEmpty fires when ReactiveSecurityContextHolder is empty
+                    // (i.e. Spring Security never populated it — means no Authorization header
+                    //  was present at all, or SecurityConfig let the request through unauthenticated)
+                    .switchIfEmpty(Mono.defer(() -> {
+                        System.err.printf(
+                            "[KeycloakJwtFilter] %s → REJECT: ReactiveSecurityContextHolder is empty " +
+                            "(no Authorization: Bearer header was sent by the client)%n", path
+                        );
+                        return reject(strippedExchange.getResponse(),
+                                HttpStatus.UNAUTHORIZED,
+                                "Unauthenticated — no Bearer token provided");
+                    }));
+        };
+    }
+
+    /**
+     * Extract username — prefers 'preferred_username' (standard Keycloak claim),
+     * falls back to 'sub'.
+     */
+    private String extractUsername(Jwt jwt) {
+        String preferred = jwt.getClaimAsString("preferred_username");
+        if (preferred != null && !preferred.isBlank()) return preferred;
+        return jwt.getSubject();
+    }
+
+    /**
+     * Extract role from Keycloak JWT.
+     *
+     * Keycloak embeds roles in:
+     *   realm_access.roles  → for realm-level roles
+     *   resource_access.<clientId>.roles → for client-level roles
+     *
+     * FIX: Also checks 'roles' top-level claim as fallback (some Keycloak
+     * configs add a roles mapper at the top level).
+     */
+    @SuppressWarnings("unchecked")
+    private String extractRole(Jwt jwt) {
+        try {
+            // Check realm_access.roles (standard Keycloak)
+            var realmAccess = jwt.getClaim("realm_access");
+            if (realmAccess instanceof java.util.Map<?, ?> realmMap) {
+                Object rolesObj = realmMap.get("roles");
+                if (rolesObj instanceof List<?> roles) {
+                    if (roles.contains("admin") || roles.contains("ROLE_ADMIN")) {
+                        return "ROLE_ADMIN";
+                    }
+                    if (roles.contains("user") || roles.contains("ROLE_USER")) {
+                        return "ROLE_USER";
+                    }
+                }
+            }
+
+            // Fallback: top-level 'roles' claim
+            var rolesTopLevel = jwt.getClaim("roles");
+            if (rolesTopLevel instanceof List<?> rolesList) {
+                if (rolesList.contains("admin") || rolesList.contains("ROLE_ADMIN")) {
+                    return "ROLE_ADMIN";
+                }
+                if (rolesList.contains("user") || rolesList.contains("ROLE_USER")) {
+                    return "ROLE_USER";
+                }
+            }
+
+            // Fallback: Spring Security 'scope' claim
+            String scope = jwt.getClaimAsString("scope");
+            if (scope != null && scope.contains("admin")) {
+                return "ROLE_ADMIN";
+            }
+
+        } catch (Exception e) {
+            System.err.println("[KeycloakJwtFilter] Could not extract role: " + e.getMessage());
+        }
+
+        return "ROLE_USER"; // safe default
+    }
+
+    private String nvl(String v) {
+        return v != null ? v : "";
+    }
+
+    private Mono<Void> reject(ServerHttpResponse response, HttpStatus status, String message) {
+        response.setStatusCode(status);
+        response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
+        byte[] bytes = ("{\"message\":\"" + message + "\"}").getBytes(StandardCharsets.UTF_8);
+        DataBuffer buffer = response.bufferFactory().wrap(bytes);
+        return response.writeWith(Mono.just(buffer));
+    }
+
+    public static class Config {}
+}
