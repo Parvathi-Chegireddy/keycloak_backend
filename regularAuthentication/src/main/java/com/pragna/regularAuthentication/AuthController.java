@@ -12,13 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Auth Controller — Keycloak integrated
- *
- * Register: saves user to local DB + creates user in Keycloak
- * Login:    authenticates against local DB, then obtains Keycloak token
- * Logout:   invalidates Keycloak session + clears cookie
- */
+
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
@@ -73,12 +67,10 @@ public class AuthController {
             @RequestBody LoginRequest req,
             HttpServletResponse httpResponse) {
         try {
-            // 1. Authenticate against local DB (Spring Security)
             Authentication auth = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(req.getUsername(), req.getPassword())
             );
 
-            // 2. Obtain Keycloak token via direct password grant
             Map<String, Object> keycloakTokens = keycloakAdminService
                     .obtainToken(req.getUsername(), req.getPassword());
 
@@ -91,7 +83,7 @@ public class AuthController {
             String refreshToken = (String) keycloakTokens.get("refresh_token");
             Object expiresIn    = keycloakTokens.get("expires_in");
 
-            // 3. Set refresh token as HttpOnly cookie
+
             setRefreshTokenCookie(httpResponse, refreshToken);
 
             boolean isAdmin = auth.getAuthorities().stream()
@@ -152,7 +144,6 @@ public class AuthController {
         }
     }
 
-    // ── POST /api/auth/oauth2/save-user ───────────────────────────────────
     // Called by oauth2-service after provider login
     @PostMapping("/oauth2/save-user")
     public ResponseEntity<Map<String, Object>> saveOAuth2User(
@@ -174,7 +165,6 @@ public class AuthController {
                 oauthUser.setProvider(provider);
                 userService.registerUser(oauthUser, "ROLE_USER");
 
-                // Also create in Keycloak if not already there
                 if (!keycloakAdminService.userExistsInKeycloak(username)) {
                     String randomPass = java.util.UUID.randomUUID().toString();
                     keycloakAdminService.createKeycloakUser(username, randomPass, email, "ROLE_USER");
@@ -195,7 +185,6 @@ public class AuthController {
         }
     }
 
-    // ── Cookie helpers ────────────────────────────────────────────────────
 
     private void setRefreshTokenCookie(HttpServletResponse response, String token) {
         if (token == null) return;
