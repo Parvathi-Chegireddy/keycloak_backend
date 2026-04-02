@@ -45,13 +45,10 @@ public class SecurityConfig {
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .addFilterBefore(gatewayAuthFilter, UsernamePasswordAuthenticationFilter.class)
             .authorizeHttpRequests(auth -> auth
-                // Internal saga endpoints — called by order-service directly,
-                // NOT via gateway. Permitted here; protected by 127.0.0.1 binding.
                 .requestMatchers(
                     "/api/payment/process",
                     "/api/payment/cancel/**"
                 ).permitAll()
-                // User-facing endpoints go through gateway with JWT
                 .anyRequest().authenticated()
             )
             .exceptionHandling(ex -> ex
