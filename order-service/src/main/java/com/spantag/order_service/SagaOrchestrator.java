@@ -5,22 +5,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
-/**
- * ═══════════════════════════════════════════════════════════════
- *  ORCHESTRATION SAGA — Order Service is the orchestrator.
- *
- *  Steps:
- *    1. CREATE ORDER     → OrderService saves order as PENDING
- *    2. PROCESS PAYMENT  → call payment service /process
- *    3a. CONFIRM ORDER   → mark CONFIRMED if payment SUCCESS
- *
- *  Compensation (automatic rollback on failure):
- *    3b. CANCEL          → call payment /cancel (deletes payment record)
- *                        → DELETE the order from our DB
- *                        → Return in-memory CANCELLED order to caller
- *                          (caller returns 422 to frontend, not saved)
- * ═══════════════════════════════════════════════════════════════
- */
 @Service
 public class SagaOrchestrator {
 
@@ -36,24 +20,18 @@ public class SagaOrchestrator {
                 .build();
     }
 
-    /**
-     * Entry point — called by OrderService after initial order save.
-     * Runs the full saga synchronously.
-     */
+    
     public Order executeSaga(Order order) {
 
-        // ── STEP 1: Order created as PENDING ─────────────────────────
         log("STEP 1 — Order created as PENDING", order);
         order.setStatus(OrderStatus.PROCESSING);
         orderRepository.save(order);
 
-        // ── STEP 2: Process Payment ───────────────────────────────────
         log("STEP 2 — Calling payment service", order);
         PaymentResponse paymentResponse = processPayment(order);
 
         if (paymentResponse != null && paymentResponse.isSuccess()) {
 
-            // ── STEP 3a: Confirm Order ────────────────────────────────
             log("STEP 3 — CONFIRMED, paymentId=" + paymentResponse.getPaymentId(), order);
             order.setStatus(OrderStatus.CONFIRMED);
             order.setPaymentId(paymentResponse.getPaymentId());
@@ -61,7 +39,6 @@ public class SagaOrchestrator {
 
         } else {
 
-            // ── STEP 3b: Compensate ───────────────────────────────────
             String reason = (paymentResponse != null)
                     ? paymentResponse.getMessage()
                     : "Payment service unreachable";
@@ -72,7 +49,6 @@ public class SagaOrchestrator {
         return order;
     }
 
-    /* ── Step 2: call payment service ─────────────────────────────── */
 
     private PaymentResponse processPayment(Order order) {
         try {
@@ -103,10 +79,8 @@ public class SagaOrchestrator {
         }
     }
 
-    /* ── Compensation: cancel payment record, then delete order ──── */
 
     private void compensate(Order order, String reason) {
-        // Ask payment service to clean up its record first
         try {
             paymentClient.post()
                     .uri("/api/payment/cancel/" + order.getId())
@@ -119,11 +93,10 @@ public class SagaOrchestrator {
                     e.getMessage());
         }
 
-        // Delete the order — cancelled orders must NOT be persisted
+    
         log("COMPENSATION — deleting order from DB. Reason: " + reason, order);
         orderRepository.delete(order);
 
-        // Update in-memory object so the controller response reflects cancellation
         order.setStatus(OrderStatus.CANCELLED);
         order.setCancellationReason(reason);
     }
