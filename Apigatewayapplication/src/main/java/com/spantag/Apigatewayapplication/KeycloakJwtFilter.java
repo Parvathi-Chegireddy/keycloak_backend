@@ -29,7 +29,6 @@ public class KeycloakJwtFilter extends AbstractGatewayFilterFactory<KeycloakJwtF
         return (exchange, chain) -> {
             String path = exchange.getRequest().getPath().toString();
 
-            // ── STEP 1: Strip spoofed headers from client ─────────────
             ServerHttpRequest stripped = exchange.getRequest().mutate()
                     .headers(h -> {
                         h.remove("X-Auth-Username");
@@ -41,7 +40,6 @@ public class KeycloakJwtFilter extends AbstractGatewayFilterFactory<KeycloakJwtF
 
             var strippedExchange = exchange.mutate().request(stripped).build();
 
-            // ── STEP 2: Read validated JWT from SecurityContext ───────
             return ReactiveSecurityContextHolder.getContext()
                     .flatMap(ctx -> {
                         // FIX: More informative null-check error message
@@ -62,7 +60,6 @@ public class KeycloakJwtFilter extends AbstractGatewayFilterFactory<KeycloakJwtF
 
                         Jwt jwt = jwtAuth.getToken();
 
-                        // ── STEP 3: Extract claims ─────────────────────
                         String username = extractUsername(jwt);
                         String role     = extractRole(jwt);
                         String email    = jwt.getClaimAsString("email");
@@ -75,7 +72,6 @@ public class KeycloakJwtFilter extends AbstractGatewayFilterFactory<KeycloakJwtF
                             path, username, role, email, jwt.getIssuer()
                         );
 
-                        // ── STEP 4: Inject trusted headers ────────────
                         ServerHttpRequest mutated = strippedExchange.getRequest().mutate()
                                 .header("X-Auth-Username", nvl(username))
                                 .header("X-Auth-Role",     nvl(role))
@@ -85,9 +81,7 @@ public class KeycloakJwtFilter extends AbstractGatewayFilterFactory<KeycloakJwtF
 
                         return chain.filter(strippedExchange.mutate().request(mutated).build());
                     })
-                    // FIX: switchIfEmpty fires when ReactiveSecurityContextHolder is empty
-                    // (i.e. Spring Security never populated it — means no Authorization header
-                    //  was present at all, or SecurityConfig let the request through unauthenticated)
+                    
                     .switchIfEmpty(Mono.defer(() -> {
                         System.err.printf(
                             "[KeycloakJwtFilter] %s → REJECT: ReactiveSecurityContextHolder is empty " +
@@ -100,26 +94,14 @@ public class KeycloakJwtFilter extends AbstractGatewayFilterFactory<KeycloakJwtF
         };
     }
 
-    /**
-     * Extract username — prefers 'preferred_username' (standard Keycloak claim),
-     * falls back to 'sub'.
-     */
+    
     private String extractUsername(Jwt jwt) {
         String preferred = jwt.getClaimAsString("preferred_username");
         if (preferred != null && !preferred.isBlank()) return preferred;
         return jwt.getSubject();
     }
 
-    /**
-     * Extract role from Keycloak JWT.
-     *
-     * Keycloak embeds roles in:
-     *   realm_access.roles  → for realm-level roles
-     *   resource_access.<clientId>.roles → for client-level roles
-     *
-     * FIX: Also checks 'roles' top-level claim as fallback (some Keycloak
-     * configs add a roles mapper at the top level).
-     */
+    
     @SuppressWarnings("unchecked")
     private String extractRole(Jwt jwt) {
         try {
@@ -137,7 +119,6 @@ public class KeycloakJwtFilter extends AbstractGatewayFilterFactory<KeycloakJwtF
                 }
             }
 
-            // Fallback: top-level 'roles' claim
             var rolesTopLevel = jwt.getClaim("roles");
             if (rolesTopLevel instanceof List<?> rolesList) {
                 if (rolesList.contains("admin") || rolesList.contains("ROLE_ADMIN")) {
@@ -148,7 +129,6 @@ public class KeycloakJwtFilter extends AbstractGatewayFilterFactory<KeycloakJwtF
                 }
             }
 
-            // Fallback: Spring Security 'scope' claim
             String scope = jwt.getClaimAsString("scope");
             if (scope != null && scope.contains("admin")) {
                 return "ROLE_ADMIN";
