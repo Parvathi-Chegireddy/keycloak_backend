@@ -21,17 +21,7 @@ public class UserController {
         this.userRepository = userRepository;
     }
 
-    /* ═══════════════════════════════════════════════════════
-       USER ENDPOINTS
-       @PreAuthorize enforces role — Spring Security throws 403
-       automatically if the condition fails.
-       ═══════════════════════════════════════════════════════ */
-
-    /**
-     * GET /api/user/me
-     * Any authenticated user can fetch their own profile.
-     * Principal.getName() returns the username from GatewayAuthFilter.
-     */
+   
     @GetMapping("/api/user/me")
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<Map<String, Object>> getMyProfile(Principal principal) {
@@ -42,10 +32,7 @@ public class UserController {
                         .body(Map.of("message", "User not found")));
     }
 
-    /**
-     * PUT /api/user/me
-     * Any authenticated user can update their own profile.
-     */
+    
     @PutMapping("/api/user/me")
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<Map<String, Object>> updateMyProfile(
@@ -77,16 +64,7 @@ public class UserController {
                         .body(Map.of("message", "User not found")));
     }
 
-    /* ═══════════════════════════════════════════════════════
-       ADMIN ENDPOINTS
-       @PreAuthorize("hasRole('ADMIN')") — Spring Security
-       automatically returns 403 for non-admins.
-       ═══════════════════════════════════════════════════════ */
-
-    /**
-     * GET /api/admin/users
-     * Lists all users. ADMIN only.
-     */
+    
     @GetMapping("/api/admin/users")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<Map<String, Object>>> getAllUsers() {
@@ -97,10 +75,7 @@ public class UserController {
         return ResponseEntity.ok(users);
     }
 
-    /**
-     * GET /api/admin/users/{id}
-     * Get a specific user by ID. ADMIN only.
-     */
+   
     @GetMapping("/api/admin/users/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> getUserById(@PathVariable Long id) {
@@ -110,10 +85,6 @@ public class UserController {
                         .body(Map.of("message", "User not found")));
     }
 
-    /**
-     * PUT /api/admin/users/{id}/enable
-     * Enable or disable a user. ADMIN only.
-     */
     @PutMapping("/api/admin/users/{id}/enable")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> setUserEnabled(
@@ -130,10 +101,6 @@ public class UserController {
                         .body(Map.of("message", "User not found")));
     }
 
-    /**
-     * PUT /api/admin/users/{id}
-     * Admin updates any user's profile. ADMIN only.
-     */
     @PutMapping("/api/admin/users/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> updateUser(
@@ -153,10 +120,6 @@ public class UserController {
                         .body(Map.of("message", "User not found")));
     }
 
-    /**
-     * DELETE /api/admin/users/{id}
-     * Delete a user. ADMIN only.
-     */
     @DeleteMapping("/api/admin/users/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, String>> deleteUser(@PathVariable Long id) {
@@ -168,7 +131,6 @@ public class UserController {
         return ResponseEntity.ok(Map.of("message", "User deleted successfully"));
     }
 
-    /* ── helper ──────────────────────────────────────────── */
 
     private Map<String, Object> toProfileMap(User user) {
         Map<String, Object> map = new HashMap<>();
