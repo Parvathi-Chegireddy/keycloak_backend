@@ -15,16 +15,7 @@ public class PaymentService {
         this.paymentRepository = paymentRepository;
     }
 
-    /**
-     * Called by the saga orchestrator (order-service) — step 2 of the saga.
-     *
-     * Simulates payment processing:
-     *   - amount <= 0    → fails (invalid)
-     *   - amount > 10000 → fails (insufficient funds — demonstrates compensation)
-     *   - otherwise      → succeeds
-     *
-     * In production: replace simulateGateway() with Stripe / Razorpay / PayU.
-     */
+    
     @Transactional
     public PaymentResponse processPayment(PaymentRequest req) {
 
@@ -54,7 +45,6 @@ public class PaymentService {
         payment.setStatus(PaymentStatus.PENDING);
         paymentRepository.save(payment);
 
-        // ── Simulate gateway decision ──────────────────────────────────
         boolean paymentSuccess = simulateGateway(req.getAmount());
 
         if (paymentSuccess) {
@@ -68,7 +58,6 @@ public class PaymentService {
                     ? "Insufficient funds — amount exceeds ₹10,000 limit"
                     : "Payment declined by gateway";
 
-            // Delete the pending record — failed payments must not be persisted
             System.out.printf("[PAYMENT] FAILED — %s. Deleting pending record.%n", reason);
             paymentRepository.delete(payment);
 
@@ -79,9 +68,7 @@ public class PaymentService {
         }
     }
 
-    /**
-     * Called by saga compensation step — deletes the payment record for an order.
-     */
+   
     @Transactional
     public void cancelPayment(Long orderId) {
         paymentRepository.findByOrderId(orderId).ifPresent(payment -> {
@@ -91,23 +78,18 @@ public class PaymentService {
         });
     }
 
-    /**
-     * GET /api/payment/my — returns successful payments for a user.
-     */
+    
     public List<PaymentResponse> getMyPayments(String username) {
         return paymentRepository.findByUsername(username)
                 .stream().map(PaymentResponse::from).toList();
     }
 
-    /**
-     * GET /api/payment/admin/all — returns all payments (admin only).
-     */
+    
     public List<PaymentResponse> getAllPayments() {
         return paymentRepository.findAll()
                 .stream().map(PaymentResponse::from).toList();
     }
 
-    /* ── helpers ─────────────────────────────────────────────────── */
 
     private Payment buildPayment(PaymentRequest req) {
         Payment p = new Payment();
@@ -117,10 +99,7 @@ public class PaymentService {
         return p;
     }
 
-    /**
-     * Simulates a payment gateway decision.
-     * Amounts above 10,000 always fail — demonstrates the saga compensation.
-     */
+    
     private boolean simulateGateway(BigDecimal amount) {
         return amount.compareTo(new BigDecimal("10000")) <= 0;
     }
