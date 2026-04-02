@@ -18,14 +18,7 @@ public class PaymentController {
         this.paymentService = paymentService;
     }
 
-    /**
-     * POST /api/payment/process
-     *
-     * Called INTERNALLY by the saga orchestrator in order-service.
-     * NOT routed through the gateway — direct service-to-service call.
-     * Security: payment service is bound to 127.0.0.1 so only
-     * services on the same host can call it.
-     */
+    
     @PostMapping("/process")
     public ResponseEntity<PaymentResponse> processPayment(
             @RequestBody PaymentRequest req) {
@@ -41,12 +34,7 @@ public class PaymentController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * POST /api/payment/cancel/{orderId}
-     *
-     * Called INTERNALLY by the saga orchestrator's compensation step.
-     * NOT routed through the gateway.
-     */
+    
     @PostMapping("/cancel/{orderId}")
     public ResponseEntity<Map<String, String>> cancelPayment(
             @PathVariable Long orderId) {
@@ -54,21 +42,14 @@ public class PaymentController {
         return ResponseEntity.ok(Map.of("message", "Payment cancelled for orderId: " + orderId));
     }
 
-    /**
-     * GET /api/payment/my
-     * Returns payments for the authenticated user.
-     * Routed through gateway with JwtAuthFilter.
-     */
+    
     @GetMapping("/my")
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<List<PaymentResponse>> getMyPayments(Principal principal) {
         return ResponseEntity.ok(paymentService.getMyPayments(principal.getName()));
     }
 
-    /**
-     * GET /api/payment/admin/all
-     * Admin only — all payments.
-     */
+    
     @GetMapping("/admin/all")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<PaymentResponse>> getAllPayments() {
