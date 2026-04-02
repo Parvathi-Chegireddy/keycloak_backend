@@ -22,7 +22,6 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
             .authorizeExchange(auth -> auth
-                // ── Public routes — no JWT required ─────────────────
                 .pathMatchers(
                     "/api/auth/login",
                     "/api/auth/register",
@@ -35,7 +34,6 @@ public class SecurityConfig {
                     "/keycloak/**",
                     "/actuator/**"
                 ).permitAll()
-                // ── All other routes require valid Keycloak JWT ──────
                 .anyExchange().authenticated()
             )
             .oauth2ResourceServer(oauth2 -> oauth2
